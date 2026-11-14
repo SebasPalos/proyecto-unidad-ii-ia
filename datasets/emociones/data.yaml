@@ -1,0 +1,13 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 6
+names: ['Angry', 'Disgust', 'Happy', 'Natural', 'Sad', 'Surprise']
+
+roboflow:
+  workspace: sebastins-workspace-ps2kl
+  project: emotion-detection-cwq4g-z7jmk
+  version: 1
+  license: CC BY 4.0
+  url: https://app.roboflow.com/sebastins-workspace-ps2kl/emotion-detection-cwq4g-z7jmk/1

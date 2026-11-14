@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+
+# Dataset (1.1 GB): se descarga de Roboflow, ver README
+datasets/**
+!datasets/
+!datasets/emociones/
+!datasets/emociones/data.yaml
+!datasets/emociones/README.roboflow.txt
+
+# Resultados de entrenamiento (se regeneran con train.py)
+runs/
+
+# Pesos base: Ultralytics los descarga solo
+weights/
+models/yolo11n.pt
+models/best_anterior.pt
+
+# Ranking local de cada máquina
+data/leaderboard.json
+
+# Configuración del editor de cada quien (rutas absolutas)
+.vscode/settings.json

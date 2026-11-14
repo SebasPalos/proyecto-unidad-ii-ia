@@ -1,0 +1,18 @@
+Modelo: C:\Users\ANV15-41\OneDrive\Documentos\Trabajos UABCS\Inteligencia Artificial\Proyecto Unidad II\models\best.pt
+Entrenamiento: C:\Users\ANV15-41\OneDrive\Documentos\Trabajos UABCS\Inteligencia Artificial\Proyecto Unidad II\runs\detect\emociones_100
+
+Conjunto de prueba (test)
+  mAP50:     0.862
+  mAP50-95:  0.704
+  Precision: 0.848
+  Recall:    0.740
+
+mAP50 por emoción
+  Enojo      0.851
+  Asco       0.893
+  Felicidad  0.946
+  Neutral    0.718
+  Tristeza   0.823
+  Sorpresa   0.942
+
+Matriz de confusión (umbral del juego, conf=0.25): C:\Users\ANV15-41\OneDrive\Documentos\Trabajos UABCS\Inteligencia Artificial\Proyecto Unidad II\runs\detect\emociones_100\test_juego\confusion_matrix_normalized.png

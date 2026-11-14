@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lona Convence a la IA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+<style>
+/* Lona cuadrada 100 x 100 cm, estilo arcade. Diseño en 1000 x 1000 px (1 px = 1 mm).
+   Para imprimir: Chrome > Ctrl+P > Guardar como PDF, márgenes "Ninguno",
+   activar "Gráficos de fondo". El PDF sale a 100 x 100 cm. */
+:root{
+  --bg:#0d0221; --bg2:#1a0638;
+  --pink:#ff2a6d; --cyan:#05d9e8; --yellow:#ffe14d; --green:#39ff6a; --white:#f4f1ff;
+}
+@page{ size:100cm 100cm; margin:0; }
+*{ box-sizing:border-box; margin:0; padding:0; }
+html,body{ background:#000; }
+body{ display:flex; justify-content:center; padding:24px 16px; overflow-x:hidden; }
+.frame{ width:min(1000px, 100%, calc(100vh - 48px)); aspect-ratio:1/1; position:relative; }
+.poster{
+  width:1000px; height:1000px; position:absolute; top:0; left:0; transform-origin:top left; overflow:hidden;
+  font-family:"Press Start 2P", monospace; color:var(--white);
+  background:radial-gradient(ellipse at 50% 45%, var(--bg2) 0%, var(--bg) 70%);
+  -webkit-print-color-adjust:exact; print-color-adjust:exact;
+}
+@media print{
+  html,body{ background:var(--bg); padding:0; display:block; }
+  .frame{ width:auto; aspect-ratio:auto; }
+  .poster{ position:static; transform:none !important; zoom:3.7795; }
+}
+.poster > *{ position:absolute; }
+
+/* estrellas */
+.stars{ inset:0; }
+/* piso con cuadrícula en perspectiva */
+.floorwrap{ left:0; right:0; top:790px; bottom:0; overflow:hidden; }
+.floor{ position:absolute; left:-1000px; right:-1000px; top:0; height:600px; transform:perspective(220px) rotateX(62deg); transform-origin:top center;
+  background-image:linear-gradient(var(--pink) 3px, transparent 3px),linear-gradient(90deg, var(--pink) 3px, transparent 3px);
+  background-size:80px 60px; opacity:.6; }
+.horizon{ left:0; right:0; top:788px; height:4px; background:var(--pink); box-shadow:0 0 0 2px rgba(255,42,109,.25); }
+/* líneas de barrido CRT */
+.scan{ inset:0; background:repeating-linear-gradient(0deg, rgba(0,0,0,.28) 0 2px, transparent 2px 5px); pointer-events:none; }
+/* marco de máquina */
+.bezel{ inset:18px; border:6px solid var(--cyan); }
+.bezel::after{ content:""; position:absolute; inset:8px; border:3px solid var(--pink); }
+
+/* marcador superior */
+.hud{ left:60px; right:60px; top:52px; display:flex; justify-content:space-between; font-size:20px; line-height:1.6; text-align:center; }
+.hud .l{ color:var(--pink); display:block; }
+.hud .c .l{ color:var(--yellow); }
+
+/* título */
+h1{ left:0; right:0; top:122px; text-align:center; font-weight:400; font-size:80px; line-height:1.25; color:var(--yellow);
+  text-shadow:5px 5px 0 var(--pink), 10px 10px 0 var(--bg), 10px 10px 0 var(--cyan); }
+h1 .ia{ color:var(--white); }
+
+.lead{ left:0; right:0; top:333px; text-align:center; font-family:VT323, monospace; font-weight:400; font-size:44px; line-height:.95; letter-spacing:.06em; color:var(--cyan); }
+
+/* jugador central */
+.player{ left:370px; top:486px; width:260px; height:260px; }
+.box{ left:340px; top:456px; width:320px; height:320px; }
+.tag{ left:340px; top:418px; width:320px; height:38px; background:var(--green); color:var(--bg); font-size:20px;
+  display:flex; align-items:center; justify-content:center; }
+
+/* selección de emociones */
+.col{ top:432px; width:200px; display:flex; flex-direction:column; gap:14px; }
+.col.left{ left:85px; } .col.right{ right:85px; }
+.emo{ display:flex; flex-direction:column; align-items:center; gap:12px; font-size:13px; }
+.emo svg{ width:80px; height:80px; }
+
+/* llamada a jugar */
+.start{ left:0; right:0; top:832px; text-align:center; font-size:46px; color:var(--yellow);
+  text-shadow:4px 4px 0 var(--pink); }
+.credit{ left:0; right:0; top:910px; text-align:center; font-size:17px; color:var(--white); letter-spacing:.05em; }
+.credit b{ color:var(--cyan); font-weight:400; }
+</style>
+</head>
+<body>
+<div class="frame" id="frame">
+<div class="poster" id="poster">
+
+  <svg class="stars" viewBox="0 0 1000 1000" id="stars" aria-hidden="true"></svg>
+  <div class="floorwrap"><div class="floor"></div></div>
+  <div class="horizon"></div>
+
+  <div class="hud">
+    <div><span class="l">1UP</span>000000</div>
+    <div class="c"><span class="l">HI-SCORE</span>024671</div>
+    <div><span class="l">2UP</span>000000</div>
+  </div>
+
+  <h1>¡CONVENCE<br>A LA <span class="ia">IA!</span></h1>
+  <p class="lead">ELIGE UNA EMOCIÓN, ACTÚALA<br>Y HAZ QUE LA IA TE CREA</p>
+
+  <div class="col left">
+    <div class="emo"><svg data-emo="happy"></svg>FELICIDAD</div>
+    <div class="emo"><svg data-emo="sad"></svg>TRISTEZA</div>
+    <div class="emo"><svg data-emo="angry"></svg>ENOJO</div>
+  </div>
+  <div class="col right">
+    <div class="emo"><svg data-emo="surprise"></svg>SORPRESA</div>
+    <div class="emo"><svg data-emo="disgust"></svg>ASCO</div>
+    <div class="emo"><svg data-emo="neutral"></svg>NEUTRAL</div>
+  </div>
+
+  <svg class="player" data-emo="happy" data-big="1"></svg>
+  <svg class="box" viewBox="0 0 370 370" aria-hidden="true">
+    <rect x="3" y="3" width="364" height="364" fill="none" stroke="#39ff6a" stroke-width="6" stroke-dasharray="20 12"/>
+    <g fill="#39ff6a">
+      <rect x="0" y="0" width="60" height="14"/><rect x="0" y="0" width="14" height="60"/>
+      <rect x="310" y="0" width="60" height="14"/><rect x="356" y="0" width="14" height="60"/>
+      <rect x="0" y="356" width="60" height="14"/><rect x="0" y="310" width="14" height="60"/>
+      <rect x="310" y="356" width="60" height="14"/><rect x="356" y="310" width="14" height="60"/>
+    </g>
+  </svg>
+  <div class="tag">FELICIDAD 94%</div>
+
+  <div class="start">▶ PRESIONA START ◀</div>
+  <div class="credit">¿TE ATREVES? &nbsp;<b>5 SEGUNDOS</b>&nbsp; · &nbsp;<b>6 EMOCIONES</b></div>
+
+  <div class="scan"></div>
+  <div class="bezel"></div>
+
+</div>
+</div>
+<script>
+// Caras en pixel art 16x16: K = contorno, Y = relleno
+var BASE = [
+  ".....KKKKKK.....",
+  "...KKYYYYYYKK...",
+  "..KYYYYYYYYYYK..",
+  ".KYYYYYYYYYYYYK.",
+  ".KYYYYYYYYYYYYK.",
+  "KYYYYYYYYYYYYYYK",
+  "KYYYYYYYYYYYYYYK",
+  "KYYYYYYYYYYYYYYK",
+  "KYYYYYYYYYYYYYYK",
+  "KYYYYYYYYYYYYYYK",
+  "KYYYYYYYYYYYYYYK",
+  ".KYYYYYYYYYYYYK.",
+  ".KYYYYYYYYYYYYK.",
+  "..KYYYYYYYYYYK..",
+  "...KKYYYYYYKK...",
+  ".....KKKKKK....."
+];
+function sq(x0,x1,y){ var r=[]; for(var x=x0;x<=x1;x++) r.push([x,y]); return r; }
+var EYES = [[5,5],[6,5],[5,6],[6,6],[9,5],[10,5],[9,6],[10,6]];
+var FACES = {
+  happy:   { fill:"#ffe14d", px: EYES.concat([[3,9],[12,9],[4,10],[11,10]], sq(5,10,11)) },
+  sad:     { fill:"#05d9e8", px: EYES.concat(sq(5,10,10), [[4,11],[11,11],[3,12],[12,12]]) },
+  angry:   { fill:"#ff2a6d", px: [[4,3],[5,4],[6,4],[11,3],[10,4],[9,4],[5,6],[6,6],[9,6],[10,6]].concat(sq(5,10,10),[[4,11],[11,11]]) },
+  surprise:{ fill:"#ff9f1c", px: [[5,4],[6,4],[5,5],[6,5],[9,4],[10,4],[9,5],[10,5],[7,8],[8,8],[6,9],[9,9],[6,10],[9,10],[6,11],[9,11],[7,12],[8,12]] },
+  disgust: { fill:"#39ff6a", px: sq(4,6,6).concat(sq(9,11,6),[[4,11],[5,10],[6,10],[7,11],[8,11],[9,10],[10,10],[11,11]]) },
+  neutral: { fill:"#b8a6ff", px: EYES.concat(sq(5,10,10)) }
+};
+var NS="http://www.w3.org/2000/svg";
+document.querySelectorAll("svg[data-emo]").forEach(function(svg){
+  var f=FACES[svg.dataset.emo], big=svg.dataset.big;
+  svg.setAttribute("viewBox","0 0 16 16"); svg.setAttribute("shape-rendering","crispEdges");
+  var dark = "#0d0221";
+  function px(x,y,c){ var r=document.createElementNS(NS,"rect"); r.setAttribute("x",x); r.setAttribute("y",y); r.setAttribute("width",1.02); r.setAttribute("height",1.02); r.setAttribute("fill",c); svg.appendChild(r); }
+  BASE.forEach(function(row,y){ row.split("").forEach(function(ch,x){
+    if(ch==="K") px(x,y, big ? "#f4f1ff" : f.fill);
+    if(ch==="Y") px(x,y, big ? f.fill : dark);
+  }); });
+  // brillo
+  if(big){ px(4,3,"#fff7c2"); px(3,4,"#fff7c2"); }
+  f.px.forEach(function(p){ px(p[0],p[1], big ? dark : f.fill); });
+});
+// estrellas fijas (semilla determinista para que siempre salga igual)
+var s=7, st=document.getElementById("stars");
+function rnd(){ s=(s*16807)%2147483647; return s/2147483647; }
+for(var i=0;i<70;i++){
+  var x=Math.floor(rnd()*960)+20, y=Math.floor(rnd()*740)+20, z=rnd()<.2?8:4;
+  // sin estrellas encima de textos ni de la cara central
+  if((y>40&&y<120)||(y>120&&y<330&&x>150&&x<870)||(y>325&&y<420&&x>230&&x<790)||(x>300&&x<700&&y>400)||((x<290||x>710)&&y>420&&y<780)) continue;
+  var r=document.createElementNS(NS,"rect"); r.setAttribute("x",x); r.setAttribute("y",y); r.setAttribute("width",z); r.setAttribute("height",z);
+  r.setAttribute("fill", rnd()<.3 ? "#05d9e8" : "#f4f1ff"); r.setAttribute("opacity", .35+rnd()*.5); st.appendChild(r);
+}
+// ?render: lienzo exacto de 1000 x 1000 sin márgenes, para exportar imagen
+if(location.search.indexOf('render')>=0){
+  document.body.style.cssText='padding:0;display:block;overflow:hidden';
+  document.getElementById('frame').style.cssText='width:1000px;height:1000px';
+}
+function fit(){ var f=document.getElementById('frame'); document.getElementById('poster').style.transform='scale('+(f.clientWidth/1000)+')'; }
+addEventListener('resize',fit); fit();
+</script>
+</body>
+</html>
