@@ -116,3 +116,19 @@ def test_blink_alternates_each_half_period():
     assert retro.blink(0.1, period=1.0) is True
     assert retro.blink(0.6, period=1.0) is False
     assert retro.blink(1.1, period=1.0) is True
+
+
+def test_mix_blends_and_clamps():
+    assert retro.mix((0, 0, 0), (200, 100, 50), 0.5) == (100, 50, 25)
+    assert retro.mix((0, 0, 0), (200, 100, 50), 2) == (200, 100, 50)
+    assert retro.mix((10, 20, 30), (200, 100, 50), -1) == (10, 20, 30)
+
+
+def test_pixel_box_cuts_the_corners():
+    surface = pygame.Surface((40, 20), pygame.SRCALPHA)
+    retro.pixel_box(surface, pygame.Rect(0, 0, 40, 20), (255, 0, 0), cut=4)
+
+    assert surface.get_at((0, 0)).a == 0
+    assert surface.get_at((39, 19)).a == 0
+    assert tuple(surface.get_at((20, 0))) == (255, 0, 0, 255)
+    assert tuple(surface.get_at((0, 10))) == (255, 0, 0, 255)

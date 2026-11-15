@@ -159,6 +159,18 @@ def segments_lit(fraction: float, segments: int) -> int:
     return math.ceil(round(fraction * segments, 6))
 
 
+def mix(a, b, t: float) -> tuple[int, int, int]:
+    """Color intermedio entre a (t=0) y b (t=1): para destellos que se apagan."""
+    t = max(0.0, min(1.0, t))
+    return tuple(round(x + (y - x) * t) for x, y in zip(a[:3], b[:3]))
+
+
+def pixel_box(surface: pygame.Surface, rect: pygame.Rect, color, cut: int = 6) -> None:
+    """Rectángulo con las esquinas recortadas en escalón, como un botón de 8 bits."""
+    surface.fill(color, (rect.x + cut, rect.y, rect.w - 2 * cut, rect.h))
+    surface.fill(color, (rect.x, rect.y + cut, rect.w, rect.h - 2 * cut))
+
+
 def blink(t: float, period: float = 1.0) -> bool:
     """Encendido la primera mitad de cada periodo: para textos que parpadean."""
     return (t % period) < period / 2

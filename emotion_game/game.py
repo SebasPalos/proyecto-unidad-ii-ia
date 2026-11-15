@@ -1,4 +1,4 @@
-"""Juego arcade: el jugador elige una emoción y debe convencer a la IA durante 5 segundos."""
+"""Juego arcade: el jugador elige una emoción y debe convencer a la IA durante toda la ronda (config.ROUND_TICKS)."""
 
 import time
 
@@ -8,7 +8,9 @@ from emotion_game import config, retro
 from emotion_game.camera import Camera, frame_to_surface, to_grayscale
 from emotion_game.detector import Detection, FakeDetector
 from emotion_game.leaderboard import Leaderboard
+from emotion_game.score_marker import ScoreFx, format_multiplier, format_score, place_marker
 from emotion_game.scoring import POSITIVE, Observation, ScoreKeeper
+from emotion_game.sound import SAMPLE_RATE, ScoreSounds
 from emotion_game.tick_clock import TickClock
 
 WINDOW = (1280, 720)
@@ -21,11 +23,18 @@ PAD = 22
 
 COUNTDOWN_SECONDS = 3
 
+# Zona de la cámara donde puede flotar el marcador: debajo del HUD y dentro del marco
+MARKER_BOUNDS = pygame.Rect(18, HUD_H + 4, VIDEO[0] - 36, VIDEO[1] - HUD_H - 22)
+MARKER_RED = (235, 30, 90)  # reposo: el fucsia rojizo del juego
+LOSS_RED = (255, 0, 0)
+FLASH_STEP = 0.2  # el color cambia de golpe, sin degradados: más de 8 bits
+
 MENU, COUNTDOWN, PLAYING, NAME_ENTRY, RESULTS = range(5)
 
 
 class EmotionGame:
     def __init__(self, detector, camera: Camera, leaderboard: Leaderboard, grayscale: bool = False):
+        pygame.mixer.pre_init(SAMPLE_RATE, -16, 1, 256)  # búfer chico: el sonido sale sin retraso
         pygame.init()
         pygame.display.set_caption("¡Convence a la IA!")
         self.screen = pygame.display.set_mode(WINDOW)
@@ -53,6 +62,9 @@ class EmotionGame:
         self.player_name = ""
         self.position: int | None = None
         self.detection: Detection | None = None
+        # Animación y sonido del puntaje. Ambos se disparan desde keeper.score (ver _update)
+        self.score_fx = ScoreFx()
+        self.sounds = ScoreSounds()
 
     @property
     def target(self) -> str:
@@ -133,6 +145,7 @@ class EmotionGame:
         if self.state == COUNTDOWN and now - self.countdown_start >= COUNTDOWN_SECONDS:
             self.keeper = ScoreKeeper(self.target)
             self.tick_clock = TickClock(config.TICK_SECONDS, start=now)
+            self.score_fx.reset(self.keeper.score, now)
             self.state = PLAYING
 
         elif self.state == PLAYING:
@@ -143,6 +156,11 @@ class EmotionGame:
             )
             for _ in range(self.tick_clock.due(now)):
                 self.keeper.tick(observation)
+            # Único punto donde se anuncia un cambio de puntaje: una vez por cuadro y solo
+            # si keeper.score de verdad cambió. De aquí salen el sonido y las animaciones.
+            delta = self.score_fx.update(self.keeper.score, now)
+            if delta:
+                self.sounds.play_score_change(delta, self.keeper.multiplier)
             if self.keeper.finished:
                 self._finish_round()
 
@@ -182,7 +200,9 @@ class EmotionGame:
         if not self.camera.available:
             self._text("SIN CÁMARA", 40, retro.PINK, (VIDEO[0] // 2, VIDEO[1] // 2), center=True,
                        shadow=retro.BG)
-        self._draw_detection(frame.shape[1], frame.shape[0])
+        boxes = self._draw_detection(frame.shape[1], frame.shape[0])
+        if boxes and self.state == PLAYING:  # sin rostro no hay dónde anclarlo: se oculta
+            self._draw_score_marker(*boxes)
         self._draw_hud()
         self._draw_panel_background()
 
@@ -204,7 +224,7 @@ class EmotionGame:
     def _draw_hud(self) -> None:
         """Marcador superior sobre la cámara: 1UP, HI-SCORE y emoción objetivo."""
         self.screen.blit(self.hud_plate, (0, 0))
-        score = self.keeper.score if self.keeper and self.state != MENU else 0
+        score = self._score_shown() if self.keeper and self.state != MENU else 0
         y = 18
         self._text("1UP", 16, retro.PINK, (PAD + 8, y))
         self._text(f"{score:07d}", 16, retro.WHITE, (PAD + 8, y + 20))
@@ -226,9 +246,10 @@ class EmotionGame:
         pygame.draw.rect(self.screen, retro.PINK, (10, 10, VIDEO[0] - 20, VIDEO[1] - 20), 3)
         pygame.draw.rect(self.screen, retro.CYAN, (PANEL_X, 0, PANEL_W, WINDOW[1]), 6)
 
-    def _draw_detection(self, frame_w: int, frame_h: int) -> None:
+    def _draw_detection(self, frame_w: int, frame_h: int) -> tuple[pygame.Rect, pygame.Rect] | None:
+        """Dibuja el recuadro del rostro y su etiqueta. Devuelve ambos rectángulos en pantalla."""
         if not self.detection:
-            return
+            return None
         sx, sy = VIDEO[0] / frame_w, VIDEO[1] / frame_h
         x1, y1, x2, y2 = self.detection.box
         rect = pygame.Rect(x1 * sx, y1 * sy, (x2 - x1) * sx, (y2 - y1) * sy)
@@ -251,6 +272,86 @@ class EmotionGame:
         tag.top = max(HUD_H, tag.top)
         pygame.draw.rect(self.screen, color, tag)
         self.screen.blit(text, (tag.left + 10, tag.top + 6))
+        return rect, tag
+
+    # ----- puntaje (una sola fuente: keeper.score, visto a través de score_fx)
+
+    def _score_shown(self) -> int:
+        """El puntaje que se dibuja en TODOS lados: marcador flotante, panel y HUD."""
+        if self.state == PLAYING:
+            return self.score_fx.shown(self._now)
+        return self.keeper.score
+
+    def _multiplier_style(self) -> tuple[str, tuple]:
+        k = self.keeper
+        if k.is_pending:
+            return format_multiplier(k.multiplier, pending=True), retro.MUTED
+        return format_multiplier(k.multiplier), retro.GREEN if k.state == POSITIVE else retro.PINK
+
+    def _draw_score_marker(self, face: pygame.Rect, tag: pygame.Rect) -> None:
+        """Marcador flotante que sigue a la cabeza: [ +000 ][ x1 ]."""
+        fx, now = self.score_fx, self._now
+        flash = fx.flash(now)
+        gained = fx.direction > 0
+
+        font = self.font(48)
+        label = format_score(self._score_shown())
+        digits = font.render(label, retro.WHITE)
+        mult_text, mult_color = self._multiplier_style()
+        mult = self.font(28).render(mult_text, mult_color)
+
+        pad_x, pad_y, gap, drop = 16, 5, 6, 6
+        plate_w = max(digits.get_width(), font.render("+000", retro.WHITE).get_width()) + 2 * pad_x
+        height = digits.get_height() + 2 * pad_y
+        badge_w = mult.get_width() + 2 * 12
+        width = plate_w + gap + badge_w
+
+        # Se arma aparte para poder inflarlo e inclinarlo entero al cambiar el puntaje
+        marker = pygame.Surface((width + drop, height + drop), pygame.SRCALPHA)
+        plate = pygame.Rect(0, 0, plate_w, height)
+        badge = pygame.Rect(plate_w + gap, 0, badge_w, height)
+        lit = flash > FLASH_STEP
+        body = (retro.GREEN if gained else LOSS_RED) if lit else MARKER_RED
+        border = retro.YELLOW if lit and not gained else retro.WHITE
+        for box, fill, edge in ((plate, body, border), (badge, retro.BG, retro.CYAN)):
+            retro.pixel_box(marker, box.move(drop, drop), (*retro.BG, 200))
+            retro.pixel_box(marker, box, edge)
+            retro.pixel_box(marker, box.inflate(-8, -8), fill, cut=4)
+        # los dígitos brincan hacia arriba al sumar y caen al restar
+        bump = round(-fx.direction * 6 * flash)
+        at = digits.get_rect(center=plate.center).move(0, bump)
+        # sobre el verde neón el blanco no se lee: ahí los dígitos van oscuros
+        ink, shade = (retro.BG, retro.WHITE) if lit and gained else (retro.WHITE, retro.BG)
+        marker.blit(font.render(label, shade), at.move(font.scale, font.scale))
+        marker.blit(font.render(label, ink), at)
+        marker.blit(mult, mult.get_rect(center=badge.center))
+
+        rect = place_marker((width, height), face, tag, MARKER_BOUNDS)
+        if flash:
+            if gained:  # destello positivo: crece y se ladea
+                scale, angle, shake = 1 + 0.16 * flash, 4 * flash, 0
+            else:  # penalización: se encoge y tiembla
+                scale, angle = 1 - 0.06 * flash, -3 * flash
+                shake = round(7 * flash * (1 if int(now * 40) % 2 else -1))
+            size = (round(marker.get_width() * scale), round(marker.get_height() * scale))
+            marker = pygame.transform.rotate(pygame.transform.scale(marker, size), angle)
+            self.screen.blit(marker, marker.get_rect(center=rect.move(drop // 2, drop // 2).center)
+                             .move(shake, 0))
+        else:
+            self.screen.blit(marker, rect)
+
+        # Puntos que salen volando: los positivos suben, los negativos bajan
+        travel = 56
+        for delta, seq, progress in fx.live_popups(now):
+            text = f"{delta:+,}"
+            color = retro.GREEN if delta > 0 else retro.PINK
+            lift = travel * (1 - progress) if delta > 0 else travel * progress
+            x = rect.left + 8 + (seq % 3) * (plate_w // 3)
+            y = rect.top - 30 - round(travel - lift)
+            for surface, offset in ((self.font(20).render(text, retro.BG), 2),
+                                    (self.font(20).render(text, color), 0)):
+                surface.set_alpha(round(255 * (1 - progress ** 2)))
+                self.screen.blit(surface, (x + offset, y + offset))
 
     # ----- pantallas
 
@@ -303,7 +404,7 @@ class EmotionGame:
         self._text(self._name(self.target), 28, self._color(self.target), (x, 56), shadow=retro.BG)
         face = self.face(self.target, 10, filled=True)
         self.screen.blit(face, (PANEL_X + (PANEL_W - face.get_width()) // 2, 120))
-        for i, line in enumerate(("MANTÉN LA EMOCIÓN", "5 SEGUNDOS SEGUIDOS", "",
+        for i, line in enumerate(("MANTÉN LA EMOCIÓN", f"{config.ROUND_TICKS * config.TICK_SECONDS:.0f} SEGUNDOS SEGUIDOS", "",
                                   "ENTRE MÁS TIEMPO,", "MÁS MULTIPLICADOR.")):
             self._text(line, 16, retro.WHITE, (x, 320 + i * 26))
 
@@ -321,15 +422,15 @@ class EmotionGame:
         self._text(f"SEGURIDAD IA {conf:.0%}", 16, retro.CYAN, (x, 156))
         self._bar(x, 180, conf, retro.GREEN)
 
+        # Mismo valor y mismo destello que el marcador flotante sobre la cabeza
+        score = self._score_shown()
+        flash = self.score_fx.flash(self._now)
+        score_color = retro.mix(retro.GREEN if score >= 0 else retro.PINK, retro.WHITE, flash * 0.7)
         self._text("PUNTAJE", 16, retro.CYAN, (x, 228))
-        self._text(f"{k.score:,}", 40, retro.GREEN if k.score >= 0 else retro.PINK, (x, 250),
-                   shadow=retro.BG)
+        self._text(format_score(score), 40, score_color,
+                   (x, 250 - round(self.score_fx.direction * 4 * flash)), shadow=retro.BG)
 
-        if k.is_pending:
-            mult_color, mult_text = retro.MUTED, f"x{k.multiplier}.."
-        else:
-            mult_color = retro.GREEN if k.state == POSITIVE else retro.PINK
-            mult_text = f"x{k.multiplier}"
+        mult_text, mult_color = self._multiplier_style()
         self._text("MULTIPLICADOR", 16, retro.CYAN, (x, 330))
         self._text(mult_text, 64, mult_color, (x, 352), shadow=retro.BG)
 

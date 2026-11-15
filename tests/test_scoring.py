@@ -1,7 +1,7 @@
 """Pruebas de las reglas de puntaje del juego.
 
 Reglas (acordadas con el equipo):
-- La ronda dura 50 ticks de 0.1 s (5 segundos).
+- La ronda dura 300 ticks de 0.1 s (30 segundos), según config.ROUND_TICKS.
 - Emoción pedida: suma int(conf * 100) * multiplicador.
 - Otra emoción: resta int(conf * 100) * multiplicador.
 - Sin detección: resta 100 * multiplicador.
@@ -13,6 +13,7 @@ Reglas (acordadas con el equipo):
 
 import pytest
 
+from emotion_game import config
 from emotion_game.scoring import Observation, ScoreKeeper
 
 TARGET = "Happy"
@@ -121,20 +122,30 @@ class TestDebounce:
 
 
 class TestRoundLength:
-    def test_round_finishes_after_50_ticks(self):
-        keeper = play(ScoreKeeper(TARGET), [happy()] * 49)
+    def test_default_round_lasts_30_seconds(self):
+        assert config.ROUND_TICKS * config.TICK_SECONDS == pytest.approx(30.0)
+        assert ScoreKeeper(TARGET).remaining_seconds == pytest.approx(30.0)
+
+    def test_round_finishes_after_round_ticks(self):
+        keeper = play(ScoreKeeper(TARGET), [happy()] * (config.ROUND_TICKS - 1))
         assert not keeper.finished
         keeper.tick(happy())
         assert keeper.finished
 
     def test_ticks_after_finish_are_ignored(self):
-        keeper = play(ScoreKeeper(TARGET), [happy(1.0)] * 50)
+        keeper = play(ScoreKeeper(TARGET), [happy(1.0)] * config.ROUND_TICKS)
+        final = keeper.score
         keeper.tick(happy(1.0))
+        assert keeper.score == final
+
+    def test_short_round_still_works(self):
+        keeper = play(ScoreKeeper(TARGET, round_ticks=50), [happy(1.0)] * 51)
+        assert keeper.finished
         assert keeper.score == 27_500
 
     def test_remaining_seconds(self):
         keeper = play(ScoreKeeper(TARGET), [happy()] * 20)
-        assert keeper.remaining_seconds == pytest.approx(3.0)
+        assert keeper.remaining_seconds == pytest.approx(28.0)
 
 
 class TestStats:

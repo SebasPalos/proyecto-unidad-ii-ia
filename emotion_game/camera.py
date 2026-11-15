@@ -10,7 +10,9 @@ class Camera:
         self._width = width
         self._height = height
         # CAP_DSHOW abre la cámara mucho más rápido en Windows
-        self._cap = cv2.VideoCapture(index, cv2.CAP_DSHOW)
+        #self._cap = cv2.VideoCapture(index, cv2.CAP_DSHOW)
+        #Mac
+        self._cap = cv2.VideoCapture(index, cv2.CAP_AVFOUNDATION)
         self._cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
         self._cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
 
