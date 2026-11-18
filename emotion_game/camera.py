@@ -1,18 +1,26 @@
 """Captura de la webcam con OpenCV y conversión a superficies de Pygame."""
 
+import sys
+
 import cv2
 import numpy as np
 import pygame
+
+
+def capture_backend(platform: str = sys.platform) -> int:
+    """Backend de OpenCV según el sistema: así el mismo código abre la cámara en Windows y Mac.
+
+    CAP_DSHOW abre la cámara mucho más rápido en Windows; en Mac hace falta AVFoundation.
+    En cualquier otro sistema dejamos que OpenCV elija.
+    """
+    return {"win32": cv2.CAP_DSHOW, "darwin": cv2.CAP_AVFOUNDATION}.get(platform, cv2.CAP_ANY)
 
 
 class Camera:
     def __init__(self, index: int = 0, width: int = 640, height: int = 480):
         self._width = width
         self._height = height
-        # CAP_DSHOW abre la cámara mucho más rápido en Windows
-        #self._cap = cv2.VideoCapture(index, cv2.CAP_DSHOW)
-        #Mac
-        self._cap = cv2.VideoCapture(index, cv2.CAP_AVFOUNDATION)
+        self._cap = cv2.VideoCapture(index, capture_backend())
         self._cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
         self._cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
 

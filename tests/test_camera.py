@@ -1,6 +1,20 @@
+import cv2
 import numpy as np
+import pytest
 
-from emotion_game.camera import to_grayscale
+from emotion_game.camera import capture_backend, to_grayscale
+
+
+@pytest.mark.parametrize(
+    "platform, backend",
+    [
+        ("win32", cv2.CAP_DSHOW),  # abre la cámara mucho más rápido en Windows
+        ("darwin", cv2.CAP_AVFOUNDATION),  # Mac
+        ("linux", cv2.CAP_ANY),  # cualquier otro: que OpenCV elija
+    ],
+)
+def test_picks_the_capture_backend_for_each_os(platform, backend):
+    assert capture_backend(platform) == backend
 
 
 def make_frame():

@@ -25,3 +25,6 @@ data/leaderboard.json
 
 # Configuración del editor de cada quien (rutas absolutas)
 .vscode/settings.json
+
+# Capturas y salidas de sesiones con IA
+Claude outputs/
