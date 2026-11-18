@@ -1,7 +1,7 @@
 # ¡Convence a la IA!
 
 Juego arcade de detección de emociones con YOLO11n. Elige una emoción, actúala frente a la
-webcam y haz que la IA te crea durante 5 segundos. Entre más tiempo la sostengas, más sube
+webcam y haz que la IA te crea durante 30 segundos. Entre más tiempo la sostengas, más sube
 tu multiplicador.
 
 ## Instalación
@@ -23,6 +23,10 @@ python main.py --camera 1 # otra webcam
 ```
 
 Controles: flechas para elegir, Enter para jugar, Esc para volver al menú o salir.
+
+Durante la ronda el puntaje se ve en dos lugares a la vez: en el panel derecho y en un
+marcador flotante que sigue tu cabeza (`+000` / `-000` y el multiplicador `x1`). Los dos leen
+el mismo valor. Cada vez que el puntaje cambia suena un efecto: agudo al sumar, grave al restar.
 
 ## Modelo
 
@@ -49,7 +53,7 @@ python -m pytest
 
 | Ruta | Qué hay |
 |---|---|
-| `emotion_game/` | Lógica del juego: puntaje, cámara, detector, ranking y estilo arcade (`retro.py`) |
+| `emotion_game/` | Lógica del juego: puntaje, cámara, detector, ranking, estilo arcade (`retro.py`), marcador flotante (`score_marker.py`) y sonidos (`sound.py`) |
 | `tests/` | Pruebas con pytest |
 | `models/` | Modelo entrenado y métricas |
 | `lona/` | Diseño de la lona (HTML editable, PDF 100 × 100 cm y JPG 150 dpi) |
