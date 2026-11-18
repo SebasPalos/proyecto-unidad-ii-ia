@@ -1,7 +1,7 @@
 """Pruebas de las reglas de puntaje del juego.
 
 Reglas (acordadas con el equipo):
-- La ronda dura 300 ticks de 0.1 s (30 segundos), según config.ROUND_TICKS.
+- La ronda dura 100 ticks de 0.1 s (10 segundos), según config.ROUND_TICKS.
 - Emoción pedida: suma int(conf * 100) * multiplicador.
 - Otra emoción: resta int(conf * 100) * multiplicador.
 - Sin detección: resta 100 * multiplicador.
@@ -122,9 +122,9 @@ class TestDebounce:
 
 
 class TestRoundLength:
-    def test_default_round_lasts_30_seconds(self):
-        assert config.ROUND_TICKS * config.TICK_SECONDS == pytest.approx(30.0)
-        assert ScoreKeeper(TARGET).remaining_seconds == pytest.approx(30.0)
+    def test_default_round_lasts_10_seconds(self):
+        assert config.ROUND_TICKS * config.TICK_SECONDS == pytest.approx(10.0)
+        assert ScoreKeeper(TARGET).remaining_seconds == pytest.approx(10.0)
 
     def test_round_finishes_after_round_ticks(self):
         keeper = play(ScoreKeeper(TARGET), [happy()] * (config.ROUND_TICKS - 1))
@@ -145,7 +145,7 @@ class TestRoundLength:
 
     def test_remaining_seconds(self):
         keeper = play(ScoreKeeper(TARGET), [happy()] * 20)
-        assert keeper.remaining_seconds == pytest.approx(28.0)
+        assert keeper.remaining_seconds == pytest.approx(8.0)
 
 
 class TestStats:

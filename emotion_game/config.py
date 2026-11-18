@@ -11,7 +11,7 @@ LEADERBOARD_PATH = PROJECT_DIR / "data" / "leaderboard.json"
 
 # Reglas del puntaje
 TICK_SECONDS = 0.1
-ROUND_TICKS = 300  # 30 segundos (300 ticks de 0.1 s)
+ROUND_TICKS = 100  # 10 segundos (100 ticks de 0.1 s)
 MULTIPLIER_STEP_TICKS = 5  # +1 al multiplicador cada 0.5 s seguidos
 DEBOUNCE_TICKS = 3  # 0.3 s seguidos para confirmar un cambio de estado
 NO_DETECTION_PENALTY = 100

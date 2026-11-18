@@ -1,7 +1,7 @@
 # ¡Convence a la IA!
 
 Juego arcade de detección de emociones con YOLO11n. Elige una emoción, actúala frente a la
-webcam y haz que la IA te crea durante 30 segundos. Entre más tiempo la sostengas, más sube
+webcam y haz que la IA te crea durante 10 segundos. Entre más tiempo la sostengas, más sube
 tu multiplicador.
 
 ## Instalación
